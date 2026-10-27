@@ -259,8 +259,10 @@ function eraRoutes(k, era) {
     if (m && !machines.includes(m)) machines.push(m);
     r.ins.forEach(([y]) => walk(y));
   })(k);
+  // 산 화면에서는 그 산 자체의 공정 이름만 (질산 = 글라우버법. 재료 황산의 워드법은 붙이지 않음)
+  const own = hasEra(k) ? pick(k) : null;
   state.era = keep;
-  return {names: names.reverse(), machines: machines.reverse()}; // 원료 쪽부터 (만드는 순서)
+  return {names: own ? [own.route] : names.reverse(), machines: machines.reverse()}; // 원료 쪽부터 (만드는 순서)
 }
 function eraChips(k) {
   return `<div class="routes"><div class="route"><b>만드는 방식</b>${Object.keys(ERA).map(e => {
