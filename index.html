@@ -245,9 +245,29 @@ function needsEra(k, seen = new Set()) {
   const r = pick(k);
   return !!r && r.ins.some(([x]) => needsEra(x, seen));
 }
-function eraChips() {
-  return `<div class="routes"><div class="route"><b>만드는 방식</b>${Object.entries(ERA).map(([e, label]) =>
-    `<button class="chip" data-era="${e}" aria-pressed="${state.era === e}">${esc(label)}</button>`).join("")}</div></div>`;
+// 버튼 이름: 고른 아이템을 만드는 데 실제로 쓰이는 공정 이름 (황산 화면은 워드법/접촉법, 질산 화면은 글라우버법/오스트발트법)
+const ERA_WHERE = {early: "작업대·화로", modern: "합성탑·산화로"};
+const MACHINE = {ammonia_tower: "합성탑", nitric_oxidizer: "산화로"};
+function eraRoutes(k, era) {
+  const keep = state.era; state.era = era;
+  const names = [], machines = [], seen = new Set();
+  (function walk(x) {
+    if (seen.has(x)) return; seen.add(x);
+    const r = pick(x); if (!r) return;
+    if (hasEra(x) && r.route && !names.includes(r.route)) names.push(r.route);
+    const m = MACHINE[r.st[0]];
+    if (m && !machines.includes(m)) machines.push(m);
+    r.ins.forEach(([y]) => walk(y));
+  })(k);
+  state.era = keep;
+  return {names: names.reverse(), machines: machines.reverse()}; // 원료 쪽부터 (만드는 순서)
+}
+function eraChips(k) {
+  return `<div class="routes"><div class="route"><b>만드는 방식</b>${Object.keys(ERA).map(e => {
+    const {names, machines} = eraRoutes(k, e);
+    const where = e === "early" ? ERA_WHERE.early : machines.join("·") || ERA_WHERE.modern;
+    return `<button class="chip" data-era="${e}" aria-pressed="${state.era === e}">${esc((names.join(" · ") || ERA[e]) + " (" + where + ")")}</button>`;
+  }).join("")}</div></div>`;
 }
 function routeChips(p) {
   const keys = p.links.map(l => l.r.out).filter((k, i, a) => a.indexOf(k) === i && choices(k).length > 1 && !hasEra(k));
@@ -294,12 +314,12 @@ function renderDetail() {
   if (byOut[k]) {
     const p = path(k);
     html += `<section class="box"><h3>제작 경로</h3><p class="sub">원료(검은 테두리)에서 시작 → 중간 산출물(주황) → ${esc(it.name)}(초록). 점선 칸은 그 단계에 추가로 넣는 재료, 카드를 누르면 그 아이템으로 이동.</p>`
-      + (p.links.some(l => hasEra(l.r.out)) ? eraChips() : "") + routeChips(p)
+      + (p.links.some(l => hasEra(l.r.out)) ? eraChips(k) : "") + routeChips(p)
       + (p.links.length && p.links[p.links.length - 1].r.route ? `<p class="sub" style="margin-top:8px"><b>공정:</b> ${esc(p.links[p.links.length - 1].r.route)}</p>` : "")
       + lineHTML(p);
     const sub = subPaths(p, new Set());
     if (sub) html += `<p class="sub" style="margin-top:12px">재료 중 만들어야 하는 것 — 눌러서 펼치기</p>`
-      + (!p.links.some(l => hasEra(l.r.out)) && needsEra(k) ? eraChips() : "") + sub;
+      + (!p.links.some(l => hasEra(l.r.out)) && needsEra(k) ? eraChips(k) : "") + sub;
     html += `</section>`;
     html += `<section class="box"><h3>만드는 법</h3>${byOut[k].map(recipeHTML).join("")}</section>`;
   }
