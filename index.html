@@ -307,10 +307,10 @@ function recipeHTML(r) {
     + (r.ret ? `<div class="retb"><span>+ 돌려받음</span>${card("glass_bottle", r.ret, "ret")}</div>` : "")
     + (r.note ? `<p class="nt">${esc(r.note)}</p>` : "") + `</div>`;
 }
-// 게임 안 툴팁 (마인크래프트 툴팁 모양: 짙은 보라 테두리, 첫 줄 이름, 나머지 설명)
+// 설명: 게임 안 툴팁 그대로 (마인크래프트 툴팁 모양: 짙은 보라 테두리, 첫 줄 이름, 나머지 설명)
 function tipHTML(tip) {
   if (!tip || !tip.length) return "";
-  return `<div class="mctip" aria-label="게임 안 툴팁"><span class="mctip-l">게임 안 툴팁</span>`
+  return `<div class="mctip" aria-label="설명"><span class="mctip-l">설명</span>`
     + tip.map(([c, s], i) => `<div class="tl c-${c}${i === 0 ? " tn" : ""}">${esc(s) || "&nbsp;"}</div>`).join("") + `</div>`;
 }
 function renderDetail() {
