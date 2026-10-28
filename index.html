@@ -211,8 +211,11 @@ function pick(k) {
 // 원료 → k 본류 경로
 // 이 아이템을 재료로 쓰는 경로는 여기서 시작 (질산·황산 만드는 과정은 그 아이템을 눌러서 봄)
 const STOP = new Set(DATA.stops || []);
+// 광석 블록에서 바로 나오는 것(원석·황·초석·보크사이트)은 원료로 봄 — 광석 블록 자체는 보통 직접 캐서 쓰지 않으니 경로에 안 그림
+const fromOre = r => r.ins.length === 1 && /_ore$|_crust$/.test(r.ins[0][0]);
+const RAW = new Set(R.filter(fromOre).map(r => r.out));
 function path(k, seen = new Set()) {
-  const r = seen.has(k) || (seen.size && STOP.has(k)) ? null : pick(k);
+  const r = seen.has(k) || (seen.size && (STOP.has(k) || RAW.has(k))) ? null : pick(k);
   if (!r) return {start: k, links: []};
   seen.add(k);
   const sub = path(r.main, seen);
@@ -301,7 +304,7 @@ function routeChips(p) {
 }
 // ── 트리 (가공 재료가 둘 이상 들어가는 아이템): 모든 재료를 원료까지 펼침
 // 산(질산·황산)은 만드는 방법이 여러 갈래라 트리 안에서는 펼치지 않고, 촉매는 여러 번 쓰는 도구라 펼치지 않음
-const expandable = k => !!byOut[k] && I[k].cat !== "바닐라" && I[k].cat !== "촉매" && !STOP.has(k);
+const expandable = k => !!byOut[k] && I[k].cat !== "바닐라" && I[k].cat !== "촉매" && !STOP.has(k) && !RAW.has(k);
 function treeNeeded(k, seen = new Set()) {
   if (seen.has(k)) return false; seen.add(k);
   const r = pick(k); if (!r) return false;
@@ -368,7 +371,7 @@ function subPaths(p, seen) {
   if (STOP.has(p.start) && p.links.length) keys.push(p.start);
   p.links.forEach(l => l.adds.forEach(([k]) => keys.push(k)));
   keys.forEach(k => {
-    if (seen.has(k) || !byOut[k]) return; seen.add(k);
+    if (seen.has(k) || !byOut[k] || RAW.has(k)) return; seen.add(k);
     const sp = path(k);
     if (!sp.links.length) return;
     const how = sp.links[sp.links.length - 1].r.route;
@@ -411,7 +414,7 @@ function renderDetail() {
       + `<div class="lscroll">${body}</div>${treeTally(t)}`
       + (notes.length ? `<ol class="lnotes">${notes.map(n => `<li>${esc(n)}</li>`).join("")}</ol>` : "") + `</section>`;
     html += `<section class="box"><h3>만드는 법</h3>${byOut[k].map(recipeHTML).join("")}</section>`;
-  } else if (byOut[k]) {
+  } else if (byOut[k] && !byOut[k].every(fromOre)) {
     const p = path(k);
     html += `<section class="box"><h3>제작 경로</h3><p class="sub">원료(검은 테두리)에서 시작 → 중간 산출물(주황) → ${esc(it.name)}(초록). 점선 칸은 그 단계에 추가로 넣는 재료, 카드를 누르면 그 아이템으로 이동.</p>`
       + (p.links.some(l => hasEra(l.r.out)) ? eraChips(k) : "") + routeChips(p)
@@ -422,6 +425,8 @@ function renderDetail() {
       + (!p.links.some(l => hasEra(l.r.out)) && needsEra(k) ? eraChips(k) : "") + sub;
     html += `</section>`;
     html += `<section class="box"><h3>만드는 법</h3>${byOut[k].map(recipeHTML).join("")}</section>`;
+  } else if (byOut[k]) {
+    html += `<section class="box"><h3>얻는 법</h3>${byOut[k].map(recipeHTML).join("")}</section>`;
   }
   const uses = [...(byIn[k] || [])].concat(R.filter(r => r.st[0] === k).map(r => r.out)).filter((x, i, a) => a.indexOf(x) === i && x !== k);
   if (uses.length) html += `<section class="box"><h3>쓰이는 곳 <span class="badge">${uses.length}</span></h3><div class="uses">${uses.map(u => card(u, 1, "add")).join("")}</div></section>`;
